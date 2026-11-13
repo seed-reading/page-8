@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自己画地图的人 · 叙事能力与意义建构</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1c1410;
+    --ink-light: #4a3f35;
+    --paper: #faf6ef;
+    --paper-warm: #f5ede0;
+    --rust: #b05a2a;
+    --rust-light: #d4845a;
+    --sage: #7a8c6e;
+    --sage-light: #a8b89a;
+    --gold: #c49a3c;
+    --gold-light: #e8c878;
+    --blush: #d4967a;
+    --line: rgba(28,20,16,0.12);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Serif SC', serif;
+    line-height: 1.9;
+    overflow-x: hidden;
+  }
+
+  /* 纹理背景 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.6;
+  }
+
+  /* Cover */
+  .cover {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+    background: var(--ink);
+  }
+
+  .cover-bg {
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 80% 60% at 20% 80%, rgba(176,90,42,0.25) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 85% 10%, rgba(122,140,110,0.2) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 50% 50%, rgba(196,154,60,0.08) 0%, transparent 70%);
+  }
+
+  .cover-deco {
+    position: absolute;
+    top: 0; right: 0;
+    width: 45%;
+    height: 100%;
+    opacity: 0.06;
+    background: repeating-linear-gradient(
+      -45deg,
+      #fff 0px,
+      #fff 1px,
+      transparent 1px,
+      transparent 20px
+    );
+  }
+
+  .cover-circle {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .cover-circle:nth-child(1) { width: 500px; height: 500px; top: -150px; right: -100px; }
+  .cover-circle:nth-child(2) { width: 300px; height: 300px; bottom: 100px; right: 150px; border-color: rgba(196,154,60,0.15); }
+  .cover-circle:nth-child(3) { width: 180px; height: 180px; top: 40%; left: 5%; border-color: rgba(122,140,110,0.2); }
+
+  .cover-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 800px;
+  }
+
+  .cover-label {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    color: var(--gold-light);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 1s 0.3s forwards;
+  }
+
+  .cover-title {
+    font-size: clamp(42px, 8vw, 80px);
+    font-weight: 300;
+    color: #fff;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    opacity: 0;
+    animation: fadeUp 1s 0.5s forwards;
+  }
+
+  .cover-title em {
+    font-style: normal;
+    color: var(--gold-light);
+    display: block;
+  }
+
+  .cover-subtitle {
+    font-size: clamp(15px, 2.5vw, 20px);
+    color: rgba(255,255,255,0.5);
+    font-weight: 300;
+    margin-top: 16px;
+    margin-bottom: 50px;
+    max-width: 560px;
+    opacity: 0;
+    animation: fadeUp 1s 0.7s forwards;
+  }
+
+  .cover-line {
+    width: 60px;
+    height: 2px;
+    background: var(--rust-light);
+    margin-bottom: 50px;
+    opacity: 0;
+    animation: fadeUp 1s 0.9s forwards;
+  }
+
+  .cover-quote {
+    font-size: 14px;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    font-family: 'Playfair Display', serif;
+    max-width: 480px;
+    opacity: 0;
+    animation: fadeUp 1s 1.1s forwards;
+  }
+
+  .cover-footer {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    opacity: 0;
+    animation: fadeIn 1s 1.5s forwards;
+  }
+
+  .cover-nav {
+    display: flex;
+    gap: 28px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .cover-scroll {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.2em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .scroll-line {
+    width: 40px;
+    height: 1px;
+    background: rgba(255,255,255,0.2);
+  }
+
+  /* Main content */
+  .main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 80px 40px 120px;
+  }
+
+  /* Pull quote / opener */
+  .opener {
+    margin-bottom: 80px;
+    padding: 50px 0;
+    border-top: 2px solid var(--rust);
+    border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+
+  .opener::before {
+    content: '\201C';
+    font-family: 'Playfair Display', serif;
+    font-size: 120px;
+    color: var(--rust);
+    opacity: 0.15;
+    position: absolute;
+    top: -10px;
+    left: -20px;
+    line-height: 1;
+  }
+
+  .opener p {
+    font-size: clamp(20px, 3vw, 25px);
+    font-weight: 300;
+    line-height: 1.8;
+    color: var(--ink);
+  }
+
+  .opener em {
+    font-style: normal;
+    color: var(--rust);
+    font-weight: 500;
+  }
+
+  /* Sections */
+  .section {
+    margin-bottom: 72px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+
+  .section.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .section-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    color: var(--rust);
+    opacity: 0.2;
+    line-height: 1;
+    font-weight: 400;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: clamp(18px, 2.5vw, 23px);
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.4;
+  }
+
+  .section-title span {
+    display: block;
+    font-size: 12px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-weight: 300;
+    color: var(--rust-light);
+    letter-spacing: 0.3em;
+    margin-bottom: 4px;
+  }
+
+  .section p {
+    font-size: 16px;
+    color: var(--ink-light);
+    margin-bottom: 20px;
+    line-height: 1.95;
+  }
+
+  .section p:last-child { margin-bottom: 0; }
+
+  /* Highlight box */
+  .highlight {
+    background: var(--paper-warm);
+    border-left: 3px solid var(--rust);
+    padding: 24px 28px;
+    margin: 32px 0;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .highlight p {
+    font-size: 15px;
+    color: var(--ink);
+    margin-bottom: 0;
+    font-style: italic;
+  }
+
+  /* Four Levels Grid */
+  .qualities {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 32px 0;
+  }
+
+  .quality-card {
+    padding: 24px 20px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    text-align: left;
+    transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  }
+
+  .quality-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(28,20,16,0.08);
+    border-color: var(--rust-light);
+  }
+
+  .quality-step {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    color: var(--rust);
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .quality-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .quality-desc {
+    font-size: 13px;
+    font-family: 'Noto Sans SC', sans-serif;
+    color: var(--ink-light);
+    line-height: 1.7;
+  }
+
+  /* Two Directions Comparison */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 32px 0;
+  }
+
+  .compare-card {
+    padding: 28px 24px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .compare-card.growth {
+    background: var(--paper-warm);
+    border-color: rgba(176,90,42,0.3);
+  }
+
+  .compare-tag {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--rust);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .compare-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+
+  .compare-text {
+    font-size: 14px;
+    color: var(--ink-light);
+    line-height: 1.8;
+  }
+
+  /* Pull quote */
+  .pull-quote {
+    margin: 48px -20px;
+    padding: 40px 40px;
+    background: var(--ink);
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pull-quote::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 80% 50%, rgba(176,90,42,0.3), transparent 60%);
+  }
+
+  .pull-quote p {
+    font-size: clamp(18px, 2.5vw, 22px);
+    font-weight: 300;
+    line-height: 1.75;
+    color: rgba(255,255,255,0.9);
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
+  }
+
+  .pull-quote em {
+    font-style: normal;
+    color: var(--gold-light);
+  }
+
+  /* Dark section for Practice & Cultivation */
+  .alaya-section {
+    background: linear-gradient(135deg, #1c1410 0%, #2d2018 100%);
+    color: #fff;
+    padding: 48px 40px;
+    margin: 48px -20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .alaya-section::after {
+    content: '画图';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 110px;
+    font-weight: 700;
+    font-family: 'Noto Serif SC', serif;
+    color: rgba(255,255,255,0.03);
+    pointer-events: none;
+    letter-spacing: 0.1em;
+  }
+
+  .alaya-section .section-title {
+    color: #fff;
+  }
+
+  .alaya-section .section-title span {
+    color: var(--blush);
+  }
+
+  .alaya-section p {
+    color: rgba(255,255,255,0.7);
+  }
+
+  .alaya-section .section-num {
+    color: var(--blush);
+    opacity: 0.4;
+  }
+
+  .alaya-cards {
+    display: grid;
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .alaya-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .alaya-card-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .alaya-card-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 4px;
+    font-family: 'Noto Serif SC', serif;
+  }
+
+  .alaya-card-text {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.75;
+  }
+
+  /* Closing */
+  .closing {
+    margin-top: 80px;
+    padding-top: 60px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+  }
+
+  .closing-ornament {
+    font-size: 32px;
+    margin-bottom: 28px;
+    display: block;
+    opacity: 0.4;
+  }
+
+  .closing-text {
+    font-size: clamp(20px, 3vw, 27px);
+    font-weight: 300;
+    line-height: 1.8;
+    color: var(--ink);
+    max-width: 580px;
+    margin: 0 auto 32px;
+  }
+
+  .closing-text em {
+    font-style: normal;
+    color: var(--rust);
+    font-weight: 500;
+  }
+
+  .closing-sign {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    color: var(--ink-light);
+    letter-spacing: 0.3em;
+    opacity: 0.6;
+  }
+
+  /* Divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 48px 0;
+    opacity: 0.3;
+  }
+
+  .divider-line { flex: 1; height: 1px; background: var(--ink); }
+  .divider-dot { width: 4px; height: 4px; background: var(--rust); border-radius: 50%; }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .cover { padding: 40px 24px 36px; }
+    .main { padding: 48px 24px 80px; }
+    .pull-quote, .alaya-section { margin: 32px -10px; padding: 32px 24px; }
+    .qualities, .compare-grid { grid-template-columns: 1fr; }
+    .opener::before { font-size: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Cover -->
+<div class="cover">
+  <div class="cover-bg"></div>
+  <div class="cover-deco"></div>
+  <div class="cover-circle"></div>
+  <div class="cover-circle"></div>
+  <div class="cover-circle"></div>
+
+  <div class="cover-content">
+    <p class="cover-label">消极的容量 · 叙事能力 · 意义建构</p>
+    <h1 class="cover-title">
+      自己画地图的人
+      <em>叙事能力与意义建构</em>
+    </h1>
+    <p class="cover-subtitle">当外部的定位系统悄然失效，如何在混沌与不确定中站稳，把散乱的经历整合成自我解释的力量</p>
+    <div class="cover-line"></div>
+    <p class="cover-quote">"旧地图失效以后，不是没有地方可去，而是要学着自己画图。"</p>
+  </div>
+
+  <div class="cover-footer">
+    <div class="cover-nav">
+      <span>意义建构</span>
+      <span>容器与地图</span>
+      <span>自我画图</span>
+    </div>
+    <div class="cover-scroll">
+      <div class="scroll-line"></div>
+      <span>向下阅读</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Opener -->
+  <div class="opener">
+    <p>诗人济慈曾提出一个概念，叫“消极的容量”（Negative Capability）——在疑虑与不确定中从容停留，而不是焦躁地去抓住一个确定的答案。“我是谁”“这一切对我意味着什么”——这类问题不需要一个答案，<em>需要的是能在问题里站稳的能力。</em></p>
+  </div>
+
+  <!-- Section 1 -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <span class="section-num">一</span>
+      <h2 class="section-title">
+        <span>Meaning Construction</span>
+        叙事能力：不是讲故事，而是意义建构
+      </h2>
+    </div>
+    <p>这种在不确定中站稳的能力有一个名字：叙事能力。但它常被误解为“会讲故事”。会讲故事是一种表达技巧，可以后天训练，也可以被AI大量模拟；而叙事能力指向的是另一件事：意义建构——把散乱的经历与困惑，整合成一个能够自我解释的人。</p>
+    <p>心理学家 Dan McAdams 用三十年研究得出一个结论：人格的核心不是性格特质，而是一个人叙述自己生命的方式。你是谁，很大程度上取决于你如何讲述自己是谁。这不是比喻，是心理结构层面真实发生的事。</p>
+  </div>
+
+  <div class="divider"><div class="divider-line"></div><div class="divider-dot"></div><div class="divider-line"></div></div>
+
+  <!-- Section 2 -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <span class="section-num">二</span>
+      <h2 class="section-title">
+        <span>The Vanishing Map</span>
+        旧地图的失效：曾被配套发放的意义
+      </h2>
+    </div>
+    <p>过去，人不需要自己建构意义，因为意义是配套发放的。农业社会里，一个人的身份由出生决定——你是谁的儿子，属于哪个宗族，站在哪片土地上。宗教提供了更大的框架，把个人的生死、苦乐、善恶，嵌进一个有头有尾的宇宙叙事里。这套系统像一张地图：你知道自己在哪里，知道朝哪个方向走算是“走对了”。</p>
+    <p>工业化之后，泰勒制将思考从执行中剥离，学校也依照这个逻辑建造：标准答案压缩了个人视角的空间，格式化的时间表与“回望”和“沉淀”很难兼容。它评价的是“记住了什么”，社会结构会替学生安排好一个位置，位置本身就是答案。</p>
+    
+    <div class="highlight">
+      <p>叙事能力从未被教过，不是疏忽，是旧时代的生存逻辑本来就不需要它。有地图的人，不需要学习画图。但现在，地图导航开始失效。</p>
+    </div>
+
+    <p>现代社会的高速流动拆解了那套定位系统——人们远离家族、换过几份工作、信过又怀疑过几种人生哲学，没有任何外部结构能替人整合这一切。</p>
+  </div>
+
+  <div class="divider"><div class="divider-line"></div><div class="divider-dot"></div><div class="divider-line"></div></div>
+
+  <!-- Section 3 -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <span class="section-num">三</span>
+      <h2 class="section-title">
+        <span>Containers vs. Maps</span>
+        容器与地图：别把暂居之所当作坐标
+      </h2>
+    </div>
+    <p>当外部的定位系统消失，很多人才发现自己一直把“容器”当“地图”用。工作与家庭，长期被当作意义的来源，但它们更接近意义的容器。让工作有意义的，不是“我有一份工作”这个身份标签，而是人在那段经历里建立了什么关系、完成了什么创造、承担了什么责任。家庭也是如此——意义不依附于容器本身，而生长在容器里发生过的事情之中。</p>
+    <p>容器和地图的区别在于：容器可以换，但地图是用来在换容器的过程中知道自己在哪里的。没有地图的人，每换一次容器就要重新定向一次，而且每一次都比上一次更难，因为可以依赖的外部参照越来越少。</p>
+    <p>现在，这两个容器本身也开始松动。AI压缩了大量中间层工作，组建家庭的意愿在年轻一代持续走低。容器在变轻，而建构意义的能力从未被培养——日本“孤独死”的蔓延、年轻人的“躺平”，正是没有地图的人在地图失效后的真实状态。</p>
+  </div>
+
+  <!-- Pull Quote -->
+  <div class="pull-quote section" id="pq">
+    <p>叙事能力，是<em>自己画地图的能力</em>。地图从记录去过哪里开始，但只有走进意义的深处，它才真正能用——<em>才能在处境剧烈变化时告诉你自己在哪里</em>。</p>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <span class="section-num">四</span>
+      <h2 class="section-title">
+        <span>Four Layers & Two Directions</span>
+        画图的四个层次与两种方向
+      </h2>
+    </div>
+    <p>自己画地图的能力大致有四个层次，从粗到细，层层递进：</p>
+
+    <div class="qualities">
+      <div class="quality-card">
+        <span class="quality-step">LAYER 01</span>
+        <div class="quality-name">经历叙事</div>
+        <div class="quality-desc">能清晰、完整地说清客观上“发生了什么”</div>
+      </div>
+      <div class="quality-card">
+        <span class="quality-step">LAYER 02</span>
+        <div class="quality-name">因果叙事</div>
+        <div class="quality-desc">能深入追问事件背后的脉络，“为什么会这样”</div>
+      </div>
+      <div class="quality-card">
+        <span class="quality-step">LAYER 03</span>
+        <div class="quality-name">意义叙事</div>
+        <div class="quality-desc">能剥离外部评价，理解“这对自己意味着什么”</div>
+      </div>
+      <div class="quality-card">
+        <span class="quality-step">LAYER 04</span>
+        <div class="quality-name">身份叙事</div>
+        <div class="quality-desc">在所有经历间找到贯穿的线——“我是怎样的人，正在成为怎样的人”</div>
+      </div>
+    </div>
+
+    <p>在画图的过程中，叙事还有两种截然不同的方向。从前一种走向后一种，往往需要某种失去或外部参照突然消失的契机（如失业、关系破裂、长期坚持的方向走不通）：</p>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <span class="compare-tag">EXTERNAL RANKING</span>
+        <div class="compare-title">竞争性叙事</div>
+        <div class="compare-text">意义来自“我走到了哪里”“我在他人眼中处于什么位置”。当外部排名系统稳定时它很有效，但一旦排名系统动荡，依赖它的人便会随之陷入剧烈动荡。</div>
+      </div>
+      <div class="compare-card growth">
+        <span class="compare-tag">INTERNAL COMPASS</span>
+        <div class="compare-title">生长性叙事</div>
+        <div class="compare-text">意义不依赖于脱颖而出，而来自经历的累积和对自身生命的认识。不是“我在第几位”，而是“我正在成为谁”。它的坐标系在自己内部，无需比对即可读懂。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"><div class="divider-line"></div><div class="divider-dot"></div><div class="divider-line"></div></div>
+
+  <!-- Section 5 -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <span class="section-num">五</span>
+      <h2 class="section-title">
+        <span>Ancient Wisdom</span>
+        被边缘化的传统：古老的自我定位练习
+      </h2>
+    </div>
+    <p>历史上认真面对“没有外部定位，人怎么活”这个问题的传统，往往是那些被现代教育边缘化的传统。儒家讲“为己之学”，道家讲“无用之用”，禅宗讲“平常心是道”，古希腊人区分谋生性劳作与本身即是目的的实践。</p>
+    <p>这些传统提供的不是现成的答案，而是一种练习：在没有外部坐标的情况下，怎么知道自己在哪里。它们没有等到AI时代才开始追问这个问题，在功利主义成为主流之前就已经认真面对过了。现在这些古老的问题重新浮出水面，不是因为它们回来了，而是因为我们重新需要它们了。</p>
+  </div>
+
+  <!-- Section 6: Dark section for Practice -->
+  <div class="section alaya-section" id="s6">
+    <div class="section-header">
+      <span class="section-num">六</span>
+      <h2 class="section-title">
+        <span>How to Practice</span>
+        叙事能力不是天赋，它是可以被练的
+      </h2>
+    </div>
+    <p>这些练习之所以有效，不是因为它们提供了标准答案，而是因为它们在训练同一件事：在混沌里停留，并且把停留的过程变成地图上的一个点。</p>
+
+    <div class="alaya-cards">
+      <div class="alaya-card">
+        <span class="alaya-card-icon">✍️</span>
+        <div>
+          <div class="alaya-card-title">自我梳理的写作</div>
+          <div class="alaya-card-text">不是写给别人看、追求修辞与点赞的写作，而是那种迫使人向内追问、重新梳理“发生了什么，为什么，对我意味着什么”的私密书写。</div>
+        </div>
+      </div>
+      <div class="alaya-card">
+        <span class="alaya-card-icon">💬</span>
+        <div>
+          <div class="alaya-card-title">被好问题追问的对话</div>
+          <div class="alaya-card-text">不是彼此客套或互相确认的那种聊天，而是在真诚的对话中被一个好问题追问之后，突然发现自己说出了一些此前从未想清楚的东西。</div>
+        </div>
+      </div>
+      <div class="alaya-card">
+        <span class="alaya-card-icon">🛋️</span>
+        <div>
+          <div class="alaya-card-title">重构结构的心理探索</div>
+          <div class="alaya-card-text">心理治疗的核心机制并非给出现成解释，而是创造一个安全、容纳的空间让人重新叙述经历。在那个过程里，散乱的事件开始有了结构，结构里开始有了意义。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Closing -->
+  <div class="closing section" id="closing">
+    <span class="closing-ornament">✦</span>
+    <p class="closing-text">
+      旧地图失效以后，<em>不是没有地方可去</em>。而是要学着<em>自己画图</em>。这件事从来没有被教过，但它一直是可以学的。
+    </p>
+    <p class="closing-sign">· 自己画地图的人 · 叙事能力与意义建构 ·</p>
+  </div>
+
+</main>
+
+<script>
+  // Intersection Observer 滚动渐入效果
+  const sections = document.querySelectorAll('.section');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
